@@ -1,0 +1,32 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+Factor	Factor.py	/^class Factor():$/;"	c
+Message	Message.py	/^class Message():$/;"	c
+Node	Node.py	/^class Node():$/;"	c
+Undirected_Graphical_Model	Undirected_Graphical_Model.py	/^class Undirected_Graphical_Model():$/;"	c
+__init__	Factor.py	/^    def __init__(self, name, values):$/;"	m	class:Factor
+__init__	Message.py	/^    def __init__(self, message_vector):$/;"	m	class:Message
+__init__	Node.py	/^    def __init__(self, name, alpha_message, beta_message):$/;"	m	class:Node
+__init__	Undirected_Graphical_Model.py	/^    def __init__(self, factors, nodes):$/;"	m	class:Undirected_Graphical_Model
+backward_message_pass	Undirected_Graphical_Model.py	/^    def backward_message_pass(self):$/;"	m	class:Undirected_Graphical_Model
+chain_conditional_inference	Undirected_Graphical_Model.py	/^    def chain_conditional_inference(self, variable_1, variable_2):$/;"	m	class:Undirected_Graphical_Model
+chain_consecutive_joint_inference	Undirected_Graphical_Model.py	/^    def chain_consecutive_joint_inference(self, variable_1, variable_2):$/;"	m	class:Undirected_Graphical_Model
+chain_marginal_inference	Undirected_Graphical_Model.py	/^    def chain_marginal_inference(self, variable):$/;"	m	class:Undirected_Graphical_Model
+chain_non_consecutive_joint_inference	Undirected_Graphical_Model.py	/^    def chain_non_consecutive_joint_inference(self, variable_1, variable_2):$/;"	m	class:Undirected_Graphical_Model
+conditional_inference	Undirected_Graphical_Model.py	/^    def conditional_inference(self, variable_1, variable_2):$/;"	m	class:Undirected_Graphical_Model
+forward_message_pass	Undirected_Graphical_Model.py	/^    def forward_message_pass(self):$/;"	m	class:Undirected_Graphical_Model
+get_elimination_ordering	Undirected_Graphical_Model.py	/^    def get_elimination_ordering(self, query_variables):$/;"	m	class:Undirected_Graphical_Model
+is_chain	Undirected_Graphical_Model.py	/^    def is_chain(self):$/;"	m	class:Undirected_Graphical_Model
+joint_inference	Undirected_Graphical_Model.py	/^    def joint_inference(self, variable_1, variable_2):$/;"	m	class:Undirected_Graphical_Model
+main	main.py	/^def main():$/;"	f
+marginal_inference	Undirected_Graphical_Model.py	/^    def marginal_inference(self, variable):$/;"	m	class:Undirected_Graphical_Model
+marginalize	Undirected_Graphical_Model.py	/^    def marginalize(self, factor, variable):$/;"	m	class:Undirected_Graphical_Model
+moralize_graph	Utils.py	/^def moralize_graph(input_file):$/;"	f
+multiply_factors	Undirected_Graphical_Model.py	/^    def multiply_factors(self, factor_1, factor_2):$/;"	m	class:Undirected_Graphical_Model
+normalize	Undirected_Graphical_Model.py	/^    def normalize(self, factor):$/;"	m	class:Undirected_Graphical_Model
+read_file	Utils.py	/^def read_file(input_file):$/;"	f
+sum_of_factors	Undirected_Graphical_Model.py	/^	sum_of_factors = sum(factor.values)$/;"	v	class:Undirected_Graphical_Model
