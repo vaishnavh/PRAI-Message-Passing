@@ -113,7 +113,7 @@ def read_file(input_file):
         if is_directed == 1:
             child_node = lines[i].split()[0][2:]
             if not nodes.has_key(child_node):
-                nodes[child_node] = Node.Node(child_node, Message.Message([1, 1]), Message.Message([1, 1]))  # TODO
+                nodes[child_node] = Node.Node(child_node, Message.Message([1.0, 1.0]), Message.Message([1.0, 1.0]))  # TODO
         i += 1  # Skips the header line (? TODO)
         if len(lines[i].split()) > 1:  # To skip cases like P(B = t)
             # How many variables are there!? Read the next line! :)
@@ -122,7 +122,7 @@ def read_file(input_file):
             for var_in_factor in vars_in_factor:
                 # If the factor has not been recorded yet...
                 if not nodes.has_key(var_in_factor):
-                    nodes[var_in_factor] = Node.Node(var_in_factor, Message.Message([1, 1]), Message.Message([1, 1]))  # TODO
+                    nodes[var_in_factor] = Node.Node(var_in_factor, Message.Message([1.0, 1.0]), Message.Message([1.0, 1.0]))  # TODO
             j = i + 1
             i += pow(2, n_vars)  # Number of entries expected in table + header
             #nodes now contains all the nodes as a dictionary

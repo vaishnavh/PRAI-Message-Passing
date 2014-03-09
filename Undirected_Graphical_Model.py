@@ -106,7 +106,6 @@ class Undirected_Graphical_Model():
         """
         Marginalizes the given factor over the given variable and returns the marginalized factor.
         """
-
         var_pos =  factor.name.index(variable) # TODO: Node or variable!?
         marg_nodes = [c for c in factor.name]
         marg_nodes = marg_nodes[:var_pos] + marg_nodes[(var_pos+1):] # Remove variable from the list
@@ -161,7 +160,7 @@ class Undirected_Graphical_Model():
         marginal = temp_factors[len(temp_factors)-1]
         for factor_pos in xrange(len(temp_factors)-1):
             marginal = self.multiply_factors(marginal, temp_factors[factor_pos])
-        return marginal
+        return self.normalize(marginal).values
 
 
 
@@ -193,7 +192,14 @@ class Undirected_Graphical_Model():
         marginal = temp_factors[len(temp_factors)-1]
         for factor_pos in xrange(len(temp_factors)-1):
             marginal = self.multiply_factors(marginal, temp_factors[factor_pos])
-        return marginal
+
+        marginal = self.normalize(marginal)  # Normalize
+        #Reorder the variables if not ordered
+        if marginal.name[0] != variable_1:
+            t = marginal.values[1]
+            marginal.values[1] = marginal.values[2]
+            marginal.values[2] = t
+        return marginal.values
 
 
 
@@ -203,30 +209,312 @@ class Undirected_Graphical_Model():
         Performs conditional inference, P(variable_1 | variable_2), on the UGM and returns the conditional probability distribution as a list.
         """
         elimination_order = self.get_elimination_ordering([variable_1, variable_2])
+        temp_factors = self.factors
+        for var_pos in xrange(len(elimination_order)):
+            # Eliminate this variable
+            factors_involved = [factor for factor in temp_factors if (elimination_order[var_pos] in factor.name)]
+            # The above line finds factors that involve the to-be-eliminated
+            # variable
+            temp_factors = list(set(temp_factors) - set(factors_involved))
+            # temp_factors is updated with the remaining factors
+            if len(factors_involved) > 0:
+                # There is atleast one factor involved
+                # Multiply all these factors
+                product_factor = factors_involved[len(factors_involved)-1] # Get the last factor
+                for factor_pos in xrange(len(factors_involved)-1):
+                    product_factor = self.multiply_factors(product_factor, factors_involved[factor_pos])
+                # Marginalize over this factor on the  to-be-eliminated variable
+                product_factor = self.marginalize(product_factor, elimination_order[var_pos])
+                temp_factors = temp_factors + [product_factor] # Add back the product factor
+        # Finally on eliminating all the other variables, we might be left with a
+        # set of factors dependent only on 'variable_1' and 'variable_2'. We need to multiply
+        # them.
+        marginal = temp_factors[len(temp_factors)-1]
+        for factor_pos in xrange(len(temp_factors)-1):
+            marginal = self.multiply_factors(marginal, temp_factors[factor_pos])
+
+        marginal = self.normalize(marginal)  # Normalize
+        # Marginalize over variable_1
+        marginal_1 = self.marginalize(marginal, variable_1)  # This marginal contains only marginal_2 now
+
+        # Reorder the variables if not ordered as variable_1, variable_2
+        if marginal.name[0] != variable_1:
+            t = marginal.values[1]
+            marginal.values[1] = marginal.values[2]
+            marginal.values[2] = t
+
+        marginal.values[0] /= marginal_1.values[0]
+        marginal.values[1] /= marginal_1.values[1]
+        marginal.values[2] /= marginal_1.values[0]
+        marginal.values[3] /= marginal_1.values[1]
+
+        return marginal.values
 
 
     def forward_message_pass(self):
         """
         Performs forward message passing and fills the alpha message vector of all nodes.
         """
+        leaves = str() #A string of two leaves
+        for node in self.nodes:
+             is_present = [1 for factor in self.factors if (node.name in factor.name) and (len(factor.name) == 2)]
+             if sum(is_present) == 1:
+                 leaves = leaves + node.name
+        # Choosing a leaf to begin with, by making an alphabetical ordering
+        begin_leaf = 0
+        if leaves[1] < leaves[0]:
+            begin_leaf = 1
+
+        # Develop a dictionary to address nodes. Saves time.
+        node_dict = dict()
+        for node in self.nodes:
+            node_dict[node.name] = node
+
+        # Develop a dictionary to address factors a node is associated with.
+        factor_dict = dict()
+        for factor in self.factors:
+            for node_name in factor.name:
+                if node_name in factor_dict.keys():
+                    factor_dict[node_name] += [factor]
+                else:
+                    factor_dict[node_name] = [factor]
+
+        # Begin message passing
+        curr_node =  leaves[begin_leaf]
+        node_dict[curr_node].alpha_message.message_vector = [1.0, 1.0]
+        prev_node =  None
+        is_reached = False
+        while not is_reached: # The condition is put within the loop
+            # Find the node that follows
+            if prev_node != None:
+                next_factors = [factor for factor in factor_dict[curr_node] if  not (prev_node in factor.name)]
+            else:
+                next_factors = [factor for factor in factor_dict[curr_node]]
+            # Next factors are the set of factors that don't contain the previous node
+            # but contain the current node!
+            prev_node = curr_node
+
+            product_factor = Factor.Factor(prev_node, node_dict[prev_node].alpha_message.message_vector)
+            # To begin with \mu_(x_{n-1})
+
+
+            for factor in factor_dict[curr_node]:
+               #Choose the factor that has only the current node x_{n-1} as its variable
+               if factor.name == curr_node:
+                   product_factor = self.multiply_factors(product_factor, factor)
+                   #Mutiply message with \psi{x_n-1}
+
+
+            #Search for the next node
+            for factor in next_factors:
+                if len(factor.name) == 2:
+                    if factor.name[0] == prev_node:
+                        curr_node = factor.name[1]
+                    else:
+                        curr_node = factor.name[0]
+                    product_factor = self.multiply_factors(product_factor, factor)
+                    #Multiply message with psi(x_n, x_{n-1})
+
+            #Current and previous nodes have been updated
+            node_dict[curr_node].alpha_message.message_vector = self.marginalize(product_factor, prev_node).values
+            #The product is marginalized over the previous node
+
+
+            if curr_node == leaves[1 - begin_leaf]:
+                is_reached = 1 #We've reached the other end!
 
 
     def backward_message_pass(self):
         """
         Performs backward message passing and fills the beta message vector of all nodes.
         """
+        leaves = str() #A string of two leaves
+        for node in self.nodes:
+             is_present = [1 for factor in self.factors if (node.name in factor.name) and (len(factor.name) == 2)]
+             if sum(is_present) == 1:
+                 leaves = leaves + node.name
+        # Choosing a leaf to begin with, by making an alphabetical ordering
+        begin_leaf = 0
+        if leaves[1] > leaves[0]:
+            begin_leaf = 1
+
+        # Develop a dictionary to address nodes. Saves time.
+        node_dict = dict()
+        for node in self.nodes:
+            node_dict[node.name] = node
+
+        # Develop a dictionary to address factors a node is associated with.
+        factor_dict = dict()
+        for factor in self.factors:
+            for node_name in factor.name:
+                if node_name in factor_dict.keys():
+                    factor_dict[node_name] += [factor]
+                else:
+                    factor_dict[node_name] = [factor]
+
+        # Begin message passing
+        curr_node =  leaves[begin_leaf]
+        node_dict[curr_node].beta_message.message_vector = [1.0, 1.0]
+        prev_node =  None
+        is_reached = False
+        while not is_reached: # The condition is put within the loop
+            # Find the node that follows
+            if prev_node != None:
+                next_factors = [factor for factor in factor_dict[curr_node] if  not (prev_node in factor.name)]
+            else:
+                next_factors = [factor for factor in factor_dict[curr_node]]
+            # Next factors are the set of factors that don't contain the previous node
+            # but contain the current node!
+            prev_node = curr_node
+
+            product_factor = Factor.Factor(prev_node, node_dict[prev_node].beta_message.message_vector)
+            # To begin with \mu_(x_{n-1})
+
+
+            for factor in factor_dict[curr_node]:
+               #Choose the factor that has only the current node x_{n-1} as its variable
+               if factor.name == curr_node:
+                   product_factor = self.multiply_factors(product_factor, factor)
+                   #Mutiply message with \psi{x_n-1}
+
+
+            #Search for the next node
+            for factor in next_factors:
+                if len(factor.name) == 2:
+                    if factor.name[0] == prev_node:
+                        curr_node = factor.name[1]
+                    else:
+                        curr_node = factor.name[0]
+                    product_factor = self.multiply_factors(product_factor, factor)
+                    #Multiply message with psi(x_n, x_{n-1})
+
+            #Current and previous nodes have been updated
+            node_dict[curr_node].beta_message.message_vector = self.marginalize(product_factor, prev_node).values
+            #The product is marginalized over the previous node
+
+            if curr_node == leaves[1 - begin_leaf]:
+                is_reached = 1 #We've reached the other end!
 
 
     def chain_marginal_inference(self, variable):
         """
         Performs marginal inference, P(variable), on the chain by message passing and returns the marginal probability distribution as a list.
         """
+        # run two passes
+        self.forward_message_pass()
+        self.backward_message_pass()
+        product_factor = None
+        for node in self.nodes:
+            # search for the node
+            if node.name == variable:
+                # product of alpha and beta messages at the node
+                product_factor = self.multiply_factors(Factor.Factor(variable,node.alpha_message.message_vector), Factor.Factor(variable, node.beta_message.message_vector))
+                break
+        for factor in self.factors:
+            # look for factor corresponding to the node alone
+            if factor.name == variable:
+                product_factor = self.multiply_factors(product_factor, factor)
+        return self.normalize(product_factor).values
 
 
     def chain_consecutive_joint_inference(self, variable_1, variable_2):
         """
         Performs joint inference on the given consecutive nodes, P(variable_1, variable_2), on the chain by message passing and returns the joint probability distribution as a list.
         """
+        # Run both passs
+        self.forward_message_pass()
+        self.backward_message_pass()
+        product_factor = None
+
+        # Develop a dictionary to address nodes. Saves time.
+        node_dict = dict()
+        for node in self.nodes:
+            node_dict[node.name] = node
+
+        # Develop a dictionary to address factors a node is associated with.
+        factor_dict = dict()
+        for factor in self.factors:
+            for node_name in factor.name:
+                if node_name in factor_dict.keys():
+                    factor_dict[node_name] += [factor]
+                else:
+                    factor_dict[node_name] = [factor]
+
+
+        # Find the leaves!
+        leaves = str() #A string of two leaves
+        for node in self.nodes:
+             is_present = [1 for factor in self.factors if (node.name in factor.name) and (len(factor.name) == 2)]
+             if sum(is_present) == 1:
+                 leaves = leaves + node.name
+
+        # Choosing a leaf to begin with, by making an alphabetical ordering
+        begin_leaf = 0
+        if leaves[1] < leaves[0]:
+            begin_leaf = 1
+
+        # To find which of variable_1 or 2 occurs at the alpha end
+        prev_node =  None
+        curr_node = leaves[begin_leaf]
+        is_reached = False
+        while not is_reached: # The condition is put within the loop
+
+            if curr_node == variable_1:
+                prev_node = variable_1
+                curr_node = variable_2
+                break
+            elif curr_node == variable_2:
+                prev_node = variable_2
+                curr_node = variable_1
+                break
+
+            # Find the node that follows
+            if prev_node != None:
+                next_factors = [factor for factor in factor_dict[curr_node] if  not (prev_node in factor.name)]
+            else:
+                next_factors = [factor for factor in factor_dict[curr_node]]
+            # Next factors are the set of factors that don't contain the previous node
+            # but contain the current node!
+            prev_node = curr_node
+
+            #Search for the next node
+            for factor in next_factors:
+                if len(factor.name) == 2:
+                    if factor.name[0] == prev_node:
+                        curr_node = factor.name[1]
+                    else:
+                        curr_node = factor.name[0]
+
+            #Check if we've reached
+            if curr_node == leaves[1 - begin_leaf]:
+                is_reached = 1 #We've reached the other end!
+
+
+        #Now  that we have identified the alpha and beta ends...
+        product_factor = self.multiply_factors(Factor.Factor(prev_node, node_dict[prev_node].alpha_message.message_vector), Factor.Factor(curr_node, node_dict[curr_node].beta_message.message_vector))
+
+        for factor in factor_dict[prev_node]:
+            if len(factor.name) == 1:
+                # \psi_{v_1}
+                product_factor = self.multiply_factors(product_factor, factor)
+            elif factor in factor_dict[curr_node]:
+                # \psi_{v_1, v_2}
+                product_factor = self.multiply_factors(product_factor, factor)
+
+        for factor in factor_dict[curr_node]:
+            if len(factor.name) == 1:
+                # \psi_{v_2}:
+                product_factor = self.multiply_factors(product_factor, factor)
+
+        # Make sure that the output is formatted as v_1, v_2
+        if product_factor.name[0] != variable_1:
+            # Swap 1th and 2th entries.
+            t = product_factor.values[1]
+            product_factor.values[1] = product_factor.values[2]
+            product_factor.values[2] = t
+
+        return self.normalize(product_factor).values
+
 
 
     def chain_non_consecutive_joint_inference(self, variable_1, variable_2):

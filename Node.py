@@ -21,8 +21,8 @@ class Node():
         self.name = name
         self.alpha_message = alpha_message
         self.beta_message = beta_message
-        
 
 
-    
-        
+
+
+
