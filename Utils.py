@@ -42,7 +42,7 @@ def moralize_graph(input_file):
         if len(lines[i].split()) == 1:
             # We've read something like P(B = t)
             pos = child_true == 'f'
-            factor_values = [0] * 2
+            factor_values = [0.0] * 2
             factor_values[pos] = float(lines[i])
             factor_values[1 - pos] = 1 - float(lines[i])
             factors[child_node] = Factor.Factor(child_node, factor_values)
@@ -54,7 +54,7 @@ def moralize_graph(input_file):
             factor_name = child_node + factor_name
             j = i + 1
             i += pow(2, n_vars) + 1  # Number of entries expected in table + header
-            factor_values = [0] * pow(2, n_vars + 1)
+            factor_values = [0.0] * pow(2, n_vars + 1)
             while j < i:
                 row = lines[j].split()
                 row_pos = row[:n_vars]  # A list of t t f etc,
@@ -65,7 +65,7 @@ def moralize_graph(input_file):
                     pos = (pos * 2) + (row_pos[k] == 'f')
                     n_pos = (n_pos * 2) + (row_pos[k] == 'f')
                 factor_values[pos] = row_val
-                factor_values[n_pos] = 1 - row_val
+                factor_values[n_pos] = 1.0 - row_val
                 j += 1
             factors[factor_name] = Factor.Factor(factor_name, factor_values)
     return factors.values()
@@ -145,11 +145,11 @@ def read_file(input_file):
             factor_name = ''.join(vars_in_factor)  # ['A','B','C'] -> 'ABC'
             j = i + 1
             i += pow(2, n_vars) + 1  # Number of entries expected in table + header
-            factor_values = [0] * pow(2, n_vars)
+            factor_values = [0.0] * pow(2, n_vars)
             while j < i:
                 row = lines[j].split()
                 row_pos = row[:n_vars]  # A list of t t f etc,
-                row_val = row[n_vars]  # Value of the factor
+                row_val = float(row[n_vars])  # Value of the factor
                 pos = 0
                 for k in xrange(len(row_pos)):
                     pos = (pos * 2) + (row_pos[k] == 'f')

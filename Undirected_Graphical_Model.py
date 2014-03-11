@@ -64,7 +64,7 @@ class Undirected_Graphical_Model():
         """
         Normalizes the values corresponding to the given factor and returns the normalized factor.
         """
-        sum_of_factors = sum(factor.values)
+        sum_of_factors = float(sum(factor.values))
         return Factor.Factor(factor.name, [float(x)/float(sum_of_factors) for x in factor.values])
 
 
@@ -120,8 +120,62 @@ class Undirected_Graphical_Model():
         Returns an elimination ordering of the random variables after removing the query variables as a list.
         For example, if random variables are 'B', 'C', 'A' and query variable is 'B', then one elimination order is ['C', 'A'].
         """
-        node_names = [node.name for node in self.nodes]
-        return list(set(node_names) - set(query_variables))
+        adj = dict()  # An adjacency list of edjes
+        for factor in self.factors:
+            for node_1 in factor.name:
+                for node_2 in factor.name:
+                    if node_1 != node_2:
+                        # If they are not the same nodes,
+                        # draw edge between them
+                        if node_1 in adj.keys():
+                            adj[node_1] = adj[node_1].union(node_2)
+                        else:
+                            adj[node_1] = set(node_2)
+                        if node_2 in adj.keys():
+                            adj[node_2] = adj[node_2].union(node_1)
+                        else:
+                            adj[node_2] = set(node_1)
+        to_elim = set(adj.keys()) - set(query_variables)  # Everything but the query variables have to be eliminated
+        elim_order = []  # Our final elimination order
+        while len(to_elim) > 0:
+            # While there are variables to eliminate
+            # we will consider each of them and choose the best
+            # based on number of fill in edges
+            elim_node = None  # We've not made a decision about what to eliminate
+            elim_cost = -1  # The number of fillin edges introduced for the one we are to eliminate
+            for node in to_elim:
+                # Count the number of pairs of neighbours who are not
+                # neighbours
+                pair_count = 0
+                for nbr_1 in adj[node]:
+                    for nbr_2 in adj[node]:
+                        #For every pair
+                        if (nbr_1 != nbr_2) and (nbr_1 not in adj[nbr_2]):
+                            pair_count += 1
+                pair_count /= 2
+                if elim_node == None:
+                    # First in the iteration...
+                    elim_node = node
+                    elim_cost = pair_count
+                elif elim_cost > pair_count:
+                    # We found a better node!
+                    elim_cost = pair_count
+                    elim_node = node
+            #  We are done choosing, remove node and add to elim
+            to_elim = to_elim - set([elim_node])
+            elim_order = elim_order + [elim_node]
+            for nbr_1 in adj[elim_node]:
+                adj[nbr_1] = adj[nbr_1] - set([elim_node])
+                for nbr_2 in adj[elim_node]:
+                    if nbr_2 != nbr_1:
+                        # Construct all fill in edges
+                        adj[nbr_1] = adj[nbr_1].union([nbr_2])
+                        adj[nbr_2] = adj[nbr_2].union([nbr_1])
+            adj.pop(elim_node, None)  # Delete the node
+        return elim_order
+
+
+
 
 
     def marginal_inference(self, variable):
@@ -231,7 +285,6 @@ class Undirected_Graphical_Model():
             t = marginal.values[1]
             marginal.values[1] = marginal.values[2]
             marginal.values[2] = t
-
         marginal.values[0] /= marginal_1.values[0]
         marginal.values[1] /= marginal_1.values[1]
         marginal.values[2] /= marginal_1.values[0]
