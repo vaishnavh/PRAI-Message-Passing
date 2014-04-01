@@ -26,7 +26,7 @@ class Undirected_Graphical_Model():
         node_names = [node.name  for node in self.nodes]
         factor_names = [factor.name for factor in self.factors]
         node_count = dict()  # A count of how many times a
-        #node has occured in the factor
+        #node has occured in a two-sized factor
         for factor_name in factor_names:
             if len(factor_name) > 2:
                 # A chain cannot have a factor of more than three
@@ -101,7 +101,7 @@ class Undirected_Graphical_Model():
         """
         Marginalizes the given factor over the given variable and returns the marginalized factor.
         """
-        var_pos =  factor.name.index(variable) # TODO: Node or variable!?
+        var_pos =  factor.name.index(variable) # TODO: Node or variable!? Resolved. Variable.
         marg_nodes = [c for c in factor.name]
         marg_nodes = marg_nodes[:var_pos] + marg_nodes[(var_pos+1):] # Remove variable from the list
         marg_values = [0] * pow(2, len(marg_nodes))

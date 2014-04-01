@@ -1,40 +1,53 @@
 """
 Author: Santhosh Kumar M (CS09B042)
-File: main.py
+File: main.py 
 """
 
-import Undirected_Graphical_Model
 import Utils
 import Factor
-import Node
 import Message
 import sys
+import Clique
+import Junction_Tree
 
 def main():
     input_file = sys.argv[1]
 
-    [factors, nodes] = Utils.read_file(input_file)
+    [factors, variables] = Utils.read_file(input_file)
 
-    ugm = Undirected_Graphical_Model.Undirected_Graphical_Model(factors, nodes)
+    if Utils.is_tree(factors) == True:
+        # Convert factors to cliques.
+        cliques = Utils.factors_to_cliques(factors)
 
-    if ugm.is_chain() == False:
+        # Compute neighbours of each clique in the junction tree.
+        neighbours = Utils.compute_neighbours(cliques)
 
-        marginal_prob_dist = ugm.marginal_inference('A')
+        # Create a junction tree
+        junction_tree = Junction_Tree.Junction_Tree(cliques, neighbours)
 
-        joint_prob_dist = ugm.joint_inference('A', 'B')
-
-        conditional_prob_dist = ugm.conditional_inference('A', 'B')
-
-        print marginal_prob_dist, joint_prob_dist, conditional_prob_dist
+    # Junction tree algorithm
     else:
+        elimination_order = Utils.get_elimination_ordering(variables, [])
 
-        chain_marginal_prob_dist = ugm.chain_marginal_inference('A')
+        # Form a set of maximal elimination cliques
+        max_cliques = Utils.get_max_cliques(factors, elimination_order)
 
-        chain_consecutive_prob_dist = ugm.chain_consecutive_joint_inference('A', 'B')
+        # Create a clique tree over maximal elimination cliques.
+        junction_tree = Utils.get_junction_tree(max_cliques)
 
-        chain_non_consecutive_prob_dist = ugm.chain_non_consecutive_joint_inference('A', 'D')
-        print chain_marginal_prob_dist, chain_consecutive_prob_dist, chain_non_consecutive_prob_dist
+    # Message passing
+    junction_tree.message_passing()
 
+    # Marginal inference
+    marginal_prob_dist = junction_tree.marginal_inference('A')
+
+    # Joint inference
+    joint_prob_dist = junction_tree.joint_inference('A', 'B')
+
+    # Conditional inference
+    conditional_prob_dist = junction_tree.conditional_inference('A', 'B')
+
+    
 
 
 if __name__ == "__main__":

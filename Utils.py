@@ -4,8 +4,10 @@ File: Utils.py
 """
 
 import Factor
-import Node
 import Message
+import Clique
+import Junction_Tree
+
 
 def moralize_graph(input_file):
     """
@@ -72,14 +74,12 @@ def moralize_graph(input_file):
 
 
 
-
 def read_file(input_file):
     """
     Reads the given input file.
     Performs moralization to convert to undirected graph if given graph is directed.
     Assigns values to factors which are stored as a list of objects (factors) of class Factor.
-    Creates a list of objects (nodes) of class Node corresponding to the random variables in the graph.
-    Returns the list of Factor() objects (factors) and the list of Node() objects.
+    Returns the list of Factor() objects (factors) and the list of random variables, say, variables = ['A', 'C', 'B'], in the given graph.
     """
     f = open(input_file)  # Opens the input file
     lines = f.readlines()  # Reads lines of the file and stores it in a list
@@ -161,16 +161,45 @@ def read_file(input_file):
 
 
 
+def factors_to_cliques(factors):
+    """
+    Simply creates a Clique() object for every given Factor() object and returns the list of Clique() objects.
+    """
 
 
+def is_tree(factors):
+    """
+    Checks whether the given graph is a tree and returns true (or false) respectively.
+    """
 
 
+def compute_neighbours(cliques):
+    """
+    Computes the neighbours of each clique and returns the neighbours dictionary.
+    For example,
+    cliques = [clique_1, clique_2, clique_3] wherein clique_1.name = 'AB', clique_2.name = 'BDE', clique_3.name = 'AC'
+    neighbours = {clique_1 : [clique_2, clique_3], clique_2 : [clique_1], clique_3 : [clique_1]}
+    """
 
 
+def get_elimination_ordering(variables, query_variables):
+    """
+    Returns an elimination ordering of the random variables after removing the query variables as a list.
+    For example, if random variables are 'B', 'C', 'A' and query variable is 'B', then one elimination order is ['C', 'A'].
+    """
 
 
+def get_max_cliques(factors, elimination_order):
+    """
+    Given the elimination order, use node elimination to return a list of maximal elimination cliques.
+    """
 
 
+def get_junction_tree(max_cliques):
+    """
+    From the given maximal elimination cliques (nodes), compute maximum weight spanning tree.
+    Return a Junction_Tree() object with nodes as cliques and edges as neighbours of each clique corresponding to the computed maximum weight spanning tree.
+    """
 
 
 

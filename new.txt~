@@ -2,7 +2,7 @@ run Message.py
 run Node.py
 run Factor.py
 run Utils.py
-[factors, nodes] = read_file('input_file_chain.txt')
+[factors, nodes] = read_file('input_file_chain.text')
 run Undirected_Graphical_Model.py
 ugm = Undirected_Graphical_Model(factors,nodes)
 
