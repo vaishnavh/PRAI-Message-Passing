@@ -1,8 +1,8 @@
 run Message.py
 run Node.py
 run Factor.py
+run Junction_Tree.py
 run Utils.py
-[factors, nodes] = read_file('input_file_chain.txt')
-run Undirected_Graphical_Model.py
-ugm = Undirected_Graphical_Model(factors,nodes)
-
+[factors, nodes] = read_file('input_file_tree')
+c = get_max_cliques(factors, get_elimination_ordering(nodes, []))
+j = get_junction_tree(c)

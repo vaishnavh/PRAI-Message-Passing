@@ -1,6 +1,6 @@
 """
 Author: Santhosh Kumar M (CS09B042)
-File: main.py 
+File: main.py
 """
 
 import Utils
@@ -9,7 +9,7 @@ import Message
 import sys
 import Clique
 import Junction_Tree
-
+l
 def main():
     input_file = sys.argv[1]
 
@@ -47,7 +47,7 @@ def main():
     # Conditional inference
     conditional_prob_dist = junction_tree.conditional_inference('A', 'B')
 
-    
+
 
 
 if __name__ == "__main__":
