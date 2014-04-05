@@ -26,7 +26,7 @@ class Junction_Tree():
         self.messages = []
         for clique in self.cliques:
             for nbr in self.neighbours[clique]:
-                self.messages += Message.Message(''.join(set(clique.name) - set(nbr.name)), []);
+                self.messages += [Message.Message(''.join(set(clique.name) - set(nbr.name)), clique, nbr, [])]
 
     def normalize(self, clique):
         """
@@ -56,7 +56,7 @@ class Junction_Tree():
 
                 # Resetting the factor names
                 factor_1 = Clique.Clique(product.name[:size_1], product.values)
-                factor_2 = Clique.Clique(message.name, message.values)
+                factor_2 = Clique.Clique(message.name, message.message_vector)
                 product_name = ''.join(nodes)
                 product_values = [0] * pow(2, len(product_name))
 
@@ -78,12 +78,6 @@ class Junction_Tree():
                     product_values[pos] = factor_1.values[pos_1] * factor_2.values[pos_2]
                 product = Clique.Clique(product_name + ''.join(remaining_nodes), product_values)
         return product
-
-
-
-
-
-
 
     def marginalize(self, clique, variable):
         """
@@ -108,35 +102,61 @@ class Junction_Tree():
             marg_values[marg_pos] += clique.values[pos]  #Sums over variable
         return Clique.Clique(''.join(marg_nodes) + scope[size:], marg_values)
 
-
-
-
-
     def message_passing(self):
         """
         Performs message passing in the junction tree.
         """
         upward = []
-        #Upward phase
-        while len(upward) < len(cliques):
+        downward = []
+        while len(downward) < len(self.cliques):
             for clique in self.cliques:
-                if clique not in upward:
-                    # Not done already
-                    degree = len(neighbours[clique])
-                    # Is ready?
-                    nbrs_done = len(set(upward).intersection(neighbours[clique]))
-                    if nbrs_done == degree - 1:
-                        # Ready to pass upward message
+                # Not done already
+                degree = len(self.neighbours[clique])
+                # Is ready?
+                nbrs_done = len(set(upward).intersection(self.neighbours[clique]))
+                if clique not in upward and nbrs_done == degree - 1:
+                    # Ready to set upward message
+                    incoming_messages = [m for m in self.messages if message.to_clique == clique and message.from_clique in upward]
+                    outgoing_message = [m for m in self.messages if message.from_clique == clique and m.to_clique not in upward]
+                    upward += [clique]  # Add to nodes that have sent upward message
+                    product = self.multiply_messages_clique(incoming_messages, clique)
+                    marg = list(set(product.name) - set(outgoing_message.to_clique.name))
+                    for variable in marg:
+                        product = self.marginalize(product, variable)
+                    # Multiplied and marginalized over non sep set variables
+                    outgoing_message.name = product.name
+                    outgoing_message.message_vector = product.values
+                if clique in upward and nbrs_done == degree:
+                    # Can send downward message
+                    in_messages = [m for m in self.messages if message.to_clique == clique]
+                    for to_clique in self.neighbours[clique]:
+                        if to_clique not in downward:
+                            outgoing_message = [m for m in incoming_messages if message.to_clique == to_clique and message.from_clique == clique]
+                            incoming_messages = [m for m in self.messages if message.to_clique == clique and message.from_clique != to_clique]
 
-
-
-
+                            product = multiply_messages_clique(incoming_messages, clique)
+                            marg = list(set(product.name) - set(outgoing_message.to_clique.name))
+                            for variable in marg:
+                                product = self.marginalize(product, variable)
+                            outgoing_message.name = product.name
+                            outgoing_message.message_vector = product.values
+                    downard += [clique]
 
     def marginal_inference(self, variable):
         """
         Performs marginal inference, P(variable), in the junction tree and returns the marginal probability distribution as a list.
         """
+        # Where all does this variable occur?
+        relevant_cliques = [c for c in self.cliques if variable in c.name]
+        min_size = min([len(c.name) for c in relevant_cliques])
+        minimum_clique = [c for c in relevant_cliques if len(relevant_cliques.name) == min_size]
+        result = minimum_clique
+        eliminate = minimum_clique.name
+        for marg in eliminate:
+            if marg != variable:
+                result = marginalize(result, marg)
 
+        return result.values
 
     def joint_inference(self, variables):
         """

@@ -1,5 +1,4 @@
 run Message.py
-run Node.py
 run Factor.py
 run Junction_Tree.py
 run Utils.py
