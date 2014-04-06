@@ -1,7 +1,16 @@
+
 run Message.py
 run Factor.py
+run Clique.py
 run Junction_Tree.py
 run Utils.py
+
+#reload(Message)
+#reload(Factor)
+#reload(Clique)
+#reload(Junction_Tree)
+
 [factors, nodes] = read_file('input_file_tree')
-c = get_max_cliques(factors, get_elimination_ordering(nodes, []))
+c = get_max_cliques(factors, get_elimination_ordering(nodes, [], factors))
 j = get_junction_tree(c)
+j.message_passing()
