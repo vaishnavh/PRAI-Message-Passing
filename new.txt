@@ -11,9 +11,13 @@ reload(Clique)
 reload(Junction_Tree)
 reload(Utils)
 
-[factors, nodes] = read_file('input_file_tree')
-c = get_max_cliques(factors, get_elimination_ordering(nodes, ['G', 'B'], factors))
+[factors, nodes] = read_file('input_file_bayesian')
+c = get_max_cliques(factors, get_elimination_ordering(nodes, ['I', 'L'], factors))
 j = get_junction_tree(c)
+j.message_passing()
+
+d = get_max_cliques(factors, get_elimination_ordering(nodes, [], factors))
+j = get_junction_tree(d)
 j.message_passing()
 
 z = factors_to_cliques(factors)

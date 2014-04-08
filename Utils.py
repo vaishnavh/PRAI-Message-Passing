@@ -201,6 +201,12 @@ def compute_neighbours(cliques):
     """
     # Called for a normal tree
     neighbours = dict() #Final answer
+
+    if len(cliques) == 1 and len(cliques[0].name) == 1:
+        neighbours[cliques] == None
+        return neighbours
+
+
     nodes = set() #Set of nodes in the tree
     for clique in cliques:
         nodes = nodes.union(list(clique.name))
@@ -279,7 +285,6 @@ def compute_neighbours(cliques):
     for clique in cliques:
         if len(clique.name) == 1:
             assigned_clique = [c for c in neighbours.keys() if clique.name[0] in c.name and len(c.name) == 2][0]
-            print "Multiplying: ", assigned_clique.name, clique.name, assigned_clique.values, clique.values
             product = multiply_factors(Factor.Factor(assigned_clique.name, assigned_clique.values), Factor.Factor(clique.name, clique.values))
             assigned_clique.name = product.name
             assigned_clique.values = product.values
@@ -455,6 +460,7 @@ def get_junction_tree(max_cliques):
     new_vertex_2 = -1
     j = 0
     max_edge = 0
+    # Kruskals
     while j < len(max_cliques):
         k = j + 1
         while k < len(max_cliques):

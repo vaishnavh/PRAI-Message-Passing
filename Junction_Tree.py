@@ -236,7 +236,6 @@ class Junction_Tree():
                         node_c_pos = nodes.index(product.name[node_pos])
                         pos_c += pow(2, Z - 1 - node_c_pos)
                         # Narrow down to the correct row
-                print pos, pos_c
                 product_values[pos] = product.values[pos_c]
             product.name = variables
             product.values = product_values
@@ -249,14 +248,39 @@ class Junction_Tree():
             to_visit  = [clique for clique in self.cliques if (len(self.neighbours[clique]) == 1)] # We will reduce this bit-by-bit
             # Used to find parent
             # TODO: check for corner cases
-            while len(to_visit) > 0:
+            partial_order = [l for l in self.cliques if len(self.neighbours[l]) == 1] #The leaves
+            parent_dict = dict()
+            #Find partial order
+            work_set = list(partial_order)
+            while len(partial_order) < len(self.cliques):
+                new_work_set = []
+                new_partial_order = set()
+                for node in work_set:
+                    parents = [p for p in self.neighbours[node] if p not in partial_order]
+                    if len(parents) > 0:
+                        parent = parents[0]
+                        parent_dict[node] = parent
+                        # Add parent to list ONLY IF every other child of it
+                        # is there in the partial order
+                        children = [c for c in self.neighbours[parent] if c not in partial_order]
+                        if len(children) <= 1:
+                            if parent not in partial_order:
+                                new_partial_order = new_partial_order.union([parent])
+                            if parent not in new_work_set:
+                                new_work_set += [parent]
+                    else:
+                        parent_dict[node] = None
+                partial_order += list(new_partial_order)
+                work_set = list(new_work_set)
+
+            to_visit = list(partial_order)
+            for clique in to_visit:
                 # when there's something to visit
                 # Find the parent
-                clique = to_visit[0]
-                #print "Visiting " + clique.name
+                # print "Visiting ", clique.name
                 rel = len(set(clique.name).intersection(variables))
-                parents = [p for p in self.neighbours[clique] if p not in visited]
-                unleaved_children = [c for c in self.neighbours[clique] if c in visited and c not in leaves]
+                parents = [p for p in self.neighbours[clique] if partial_order.index(p) > partial_order.index(clique)]
+                unleaved_children = [c for c in self.neighbours[clique] if partial_order.index(c) < partial_order.index(clique) and c not in leaves]
                 # For a node, we check if all its neighbours have been visited
                 # if yes, then if all of them are leaved out, this note could
                 # be leaved out.
@@ -266,39 +290,18 @@ class Junction_Tree():
                 # the children are leaved. If yes, do something sane.
                 # If some children are not leaved, don't leave this and forget
                 # going up
-                if len(parents) == 0:
-                    # All are visited
-                    #print "No parents"
-                    # By default this root must be there in final tree
-                    to_visit = to_visit[1:] # Visited the first element
-                    visited += [clique]
-                elif len(parents) > 1:
-                    # Something wrong. Some child has not been visited
-                    to_visit = to_visit[1:]
                 if len(unleaved_children) == 0:
                     # All children in leaves
-                    #print "All children in leaves"
                     parent = parents[0]
                     if rel == 0:
-                        #print "No relevant variables"
                         # Useless clique. Visit it and add parent to visit list
-                        if parent not in to_visit:
-                            to_visit += [parent]
-                        #print "Adding to leaves"
                         leaves += [clique] # Which means this wont be included  in the tree
                     else:
-                        #print "Some relevant variables", clique.name, parent.name
                         sepset = set(clique.name).intersection(parent.name)
                         rel_sepset = len(set(variables).intersection(sepset))
                         if rel_sepset == rel:
-                            #print "All of them sent up"
                             #Useless clique. Go to parent
-                            if parent not in to_visit:
-                                to_visit += [parent]
-                            #print "Adding to leaves"
                             leaves += [clique] # Wont be in final tree
-                    to_visit = to_visit[1:] # Visited the first element
-                    visited += [clique]
 
             # Create new tree
             unleaved_cliques = [c for c in self.cliques if c not in leaves]
