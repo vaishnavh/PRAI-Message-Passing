@@ -21,7 +21,7 @@ class Junction_Tree():
         cliques = [clique_1, clique_2, clique_3] wherein clique_1.name = 'AB', clique_2.name = 'BDE', clique_3.name = 'AC'
         neighbours = {clique_1 : [clique_2, clique_3], clique_2 : [clique_1], clique_3 : [clique_1]}
         """
-        self.cliques = cliques
+        self.cliques = neighbours.keys()
         self.neighbours = neighbours
 
         # Initialize messages using objects of Message() class - code goes here.
@@ -199,7 +199,6 @@ class Junction_Tree():
         for marg in eliminate:
             if marg != variable:
                 result = self.marginalize(result, marg)
-
         return self.normalize(result).values
 
     def joint_inference(self, variables):
@@ -208,37 +207,36 @@ class Junction_Tree():
         """
         # TODO: take care of re-ordering
         best_clique = None
-        nodes = set()
         for clique in self.cliques:
-            nodes = nodes.union(clique.name)
-            if variables in clique.name:
+            if len(set(variables).intersection(clique.name)) == len(variables):
                 # We will choose the best clique - smallest clique containing
                 # all of them
                 if best_clique == None:
                     best_clique = clique
-                else if len(best_clique.name) > len(clique.name):
+                elif len(best_clique.name) > len(clique.name):
                     best_clique = clique
         if best_clique != None:
             # Some clique was chosen
             product = best_clique
-            incoming_messages = [m for m in self.messages if m.to_clique = best_clique]
+            incoming_messages = [m for m in self.messages if m.to_clique == best_clique]
             # Multiply all incoming messages
             product = self.multiply_messages_clique(incoming_messages, best_clique)
-            eliminate = [variable in product.name if variable not in variables]
+            eliminate = [variable for variable in product.name if variable not in variables]
             for variable in eliminate:
                 product = self.marginalize(product, variable)
             # product contains required values
             Z = len(variables)
             product_values = [0]*len(product.values)
-            for pos in xrange(product.values):  # For each row in the final table
+            for pos in xrange(len(product.values)):  # For each row in the final table
                 pos_c = 0  # What row in clique?
-                nodes = best_clique.name
+                nodes = variables
                 for node_pos in xrange(Z):  # For each node in the final table
                     if pos & pow(2, Z - 1 - node_pos) != 0:
                         # The current node in the product, is set as 'f'
                         node_c_pos = nodes.index(product.name[node_pos])
                         pos_c += pow(2, Z - 1 - node_c_pos)
                         # Narrow down to the correct row
+                print pos, pos_c
                 product_values[pos] = product.values[pos_c]
             product.name = variables
             product.values = product_values
@@ -248,61 +246,87 @@ class Junction_Tree():
             # We find a minimal subtree here.
             visited = []
             leaves  = []# Tells me what all are NOT there in the final tree
-            to_visit  = [clique for clique in self.cliques if (len(neighbours[clique]) == 1)] # We will reduce this bit-by-bit
+            to_visit  = [clique for clique in self.cliques if (len(self.neighbours[clique]) == 1)] # We will reduce this bit-by-bit
             # Used to find parent
             # TODO: check for corner cases
             while len(to_visit) > 0:
                 # when there's something to visit
                 # Find the parent
                 clique = to_visit[0]
-                rel = len(set(clique.name).intersection(variables)) == 0
-                parents = [p for p in neighbours[clique] if p not in visited]
-
+                #print "Visiting " + clique.name
+                rel = len(set(clique.name).intersection(variables))
+                parents = [p for p in self.neighbours[clique] if p not in visited]
+                unleaved_children = [c for c in self.neighbours[clique] if c in visited and c not in leaves]
+                # For a node, we check if all its neighbours have been visited
+                # if yes, then if all of them are leaved out, this note could
+                # be leaved out.
+                # If more than one neighbour is not visited, visit this node
+                # later. Maybe some descendant is unleaved
+                # If exactly one neighbour is unvisited, we check whether all
+                # the children are leaved. If yes, do something sane.
+                # If some children are not leaved, don't leave this and forget
+                # going up
                 if len(parents) == 0:
-                    break
-                unleaved_children = [c for c in neighbours[clique] if c in visited and c not in leaves]
+                    # All are visited
+                    #print "No parents"
+                    # By default this root must be there in final tree
+                    to_visit = to_visit[1:] # Visited the first element
+                    visited += [clique]
+                elif len(parents) > 1:
+                    # Something wrong. Some child has not been visited
+                    to_visit = to_visit[1:]
                 if len(unleaved_children) == 0:
                     # All children in leaves
+                    #print "All children in leaves"
                     parent = parents[0]
                     if rel == 0:
+                        #print "No relevant variables"
                         # Useless clique. Visit it and add parent to visit list
                         if parent not in to_visit:
                             to_visit += [parent]
+                        #print "Adding to leaves"
                         leaves += [clique] # Which means this wont be included  in the tree
                     else:
-                        rel_sepset = len(set(clique.name).intersection(parent.name))
-                        if rel_sepset == parent:
+                        #print "Some relevant variables", clique.name, parent.name
+                        sepset = set(clique.name).intersection(parent.name)
+                        rel_sepset = len(set(variables).intersection(sepset))
+                        if rel_sepset == rel:
+                            #print "All of them sent up"
                             #Useless clique. Go to parent
                             if parent not in to_visit:
                                 to_visit += [parent]
+                            #print "Adding to leaves"
                             leaves += [clique] # Wont be in final tree
-                to_visit = to_visit[1:] # Visited the first element
-                visited += [clique]
+                    to_visit = to_visit[1:] # Visited the first element
+                    visited += [clique]
+
             # Create new tree
             unleaved_cliques = [c for c in self.cliques if c not in leaves]
             # For ever new factor we retain itself * incoming messages /
             # parent-ward message
             factors = []
+            nodes = []
             clique_factor = dict()
             for clique in unleaved_cliques:
                 # leaf_messages = [m for m in self.messages if m.to_clique = clique and m.from_clique in leaves]
-                product_values = self.joint_inference(clique.names) #self.multiply_messages_clique(leaf_messages, clique)
+                product_values = self.joint_inference(clique.name) #self.multiply_messages_clique(leaf_messages, clique)
                 new_factor = Factor.Factor(clique.name, product_values)
                 clique_factor[clique] = new_factor
                 factors += [new_factor]
+                nodes += list(new_factor.name)
             for message in self.messages:
                 if message.to_clique in unleaved_cliques and message.from_clique in unleaved_cliques:
                     #Divide clique_factor by this message
                     divisor = Factor.Factor(message.name, [1/v for v in message.message_vector])
                     factor = clique_factor[message.from_clique]
-                    quotient = Utils.multiply_factors(factor, dividend)
+                    quotient = Utils.multiply_factors(factor, divisor)
                     factor.name = quotient.name
-                    factor.values = quotient.value
-            elimination_order = Utils.get_elimination_ordering(list(nodes), variables, factors)
+                    factor.values = quotient.values
+            elimination_order = Utils.get_elimination_ordering(list(set(nodes)), variables, factors)
             new_cliques = Utils.get_max_cliques(factors, elimination_order)
-            new_junction_tree = Utils.get_junction_tree(new_junction_tree)
+            new_junction_tree = Utils.get_junction_tree(new_cliques)
             new_junction_tree.message_passing()
-            return new_junction_tree.joint_inference(variable)
+            return new_junction_tree.joint_inference(variables)
 
 
 
@@ -316,5 +340,16 @@ class Junction_Tree():
         """
         Performs conditional inference, P(variable_1 | variable_2), in the junction tree and returns the conditional probability distribution as a list.
         """
+        joint = self.joint_inference([variable_1, variable_2])
+        marginal = self.marginalize(Clique.Clique(variable_1 + variable_2, joint), variable_1).values
+        joint[0] /= marginal[0]
+        joint[1] /= marginal[1]
+        joint[2] /= marginal[0]
+        joint[3] /= marginal[1]
+        return joint
+
+
+
+
 
 

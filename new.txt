@@ -5,12 +5,27 @@ run Clique.py
 run Junction_Tree.py
 run Utils.py
 
-#reload(Message)
-#reload(Factor)
-#reload(Clique)
-#reload(Junction_Tree)
+reload(Message)
+reload(Factor)
+reload(Clique)
+reload(Junction_Tree)
+reload(Utils)
 
 [factors, nodes] = read_file('input_file_tree')
-c = get_max_cliques(factors, get_elimination_ordering(nodes, [], factors))
+c = get_max_cliques(factors, get_elimination_ordering(nodes, ['G', 'B'], factors))
 j = get_junction_tree(c)
 j.message_passing()
+
+z = factors_to_cliques(factors)
+n = compute_neighbours(z)
+k = Junction_Tree.Junction_Tree(n.keys(), n)
+k.message_passing()
+
+d = get_max_cliques(factors, get_elimination_ordering(nodes, ['B', 'G'], factors))
+k = get_junction_tree(d)
+k.message_passing()
+
+
+m = factors_to_cliques(factors)
+n = compute_neighbours(n)
+junction_tree = Junction_Tree.Junction_Tree(m, n)

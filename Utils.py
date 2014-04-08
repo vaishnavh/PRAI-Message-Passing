@@ -200,19 +200,90 @@ def compute_neighbours(cliques):
     neighbours = {clique_1 : [clique_2, clique_3], clique_2 : [clique_1], clique_3 : [clique_1]}
     """
     # Called for a normal tree
-    neighbours = dict()
-    for i in xrange(len(cliques)):
-        for j in xrange(len(cliques)):
-            if i != j:
-                # See if they have any variable in common
-                if set(cliques[i].name).intersection(set(cliques[j].name)) != set():
-                    # Some variable in common exists
-                    if cliques[i] in neighbours.keys():
-                        if cliques[j] not in neighbours[cliques[i]]:
-                            neighbours[cliques[i]] += [cliques[j]]  # Add to list if not there already
-                    else:
-                        # Hasn't been keyed in the dictionary yet
-                        neighbours[cliques[i]] = [cliques[j]]
+    neighbours = dict() #Final answer
+    nodes = set() #Set of nodes in the tree
+    for clique in cliques:
+        nodes = nodes.union(list(clique.name))
+
+    # Find original tree structure to find partial ordering
+    adj = dict() #Adjacency list of nodes
+    for node in nodes:
+        # Construct a tree
+        adj[node] = set()
+    for clique in cliques:
+        if len(clique.name) == 2:
+            neighbours[clique] = []
+            adj[clique.name[0]] = adj[clique.name[0]].union([clique.name[1]])
+            adj[clique.name[1]] = adj[clique.name[1]].union([clique.name[0]])
+            neighbours[clique] = []
+    partial_order = [l for l in nodes if len(adj[l]) == 1] #The leaves
+    parent_dict = dict()
+    #Find partial order
+    work_set = list(partial_order)
+    while len(partial_order) < len(nodes):
+        new_work_set = []
+        new_partial_order = set()
+        for node in work_set:
+            parents = [p for p in adj[node] if p not in partial_order]
+            if len(parents) > 0:
+                parent = parents[0]
+                parent_dict[node] = parent
+                # Add parent to list ONLY IF every other child of it
+                # is there in the partial order
+                children = [c for c in adj[parent] if c not in partial_order]
+                if len(children) <= 1:
+                    if parent not in partial_order:
+                        new_partial_order = new_partial_order.union([parent])
+                    if parent not in new_work_set:
+                        new_work_set += [parent]
+            else:
+                parent_dict[node] = None
+        partial_order += list(new_partial_order)
+        work_set = list(new_work_set)
+
+    #Define a root edge
+    root_left = partial_order[len(nodes)-1]
+    root_right = partial_order[len(nodes)-2]#TODO: Take care of single node problem
+    parent_dict[root_left] = root_right
+    parent_dict[root_right] = root_left
+
+
+
+    # For every edge we need to add parent edge as its neighbour
+    visited = []
+    # For every node consider its children
+    for node_l in nodes:
+        for node_r in adj[node_l]:
+            if node_r not in visited:
+                if len(set([root_left, root_right]).union(set([node_l, node_r]))) !=2:
+                    # Root edge
+
+
+                    # Add parent edge
+                    parent_r = parent_dict[node_r]
+                    parent_l = parent_dict[node_l]
+                    parent = None
+                    child = None
+                    if parent_r != None:
+                        if parent_r != node_l:
+                            child = node_r
+                            parent = parent_r
+                    if child == None:
+                        child = node_l
+                        parent = parent_l
+                    child_clique = [c for c in cliques if node_l in c.name and node_r in c.name][0]
+                    parent_clique = [c for c in cliques if child in c.name and parent in c.name][0]
+                    neighbours[child_clique] += [parent_clique]
+                    neighbours[parent_clique] += [child_clique]
+        visited += [node_l]
+    for clique in cliques:
+        if len(clique.name) == 1:
+            assigned_clique = [c for c in neighbours.keys() if clique.name[0] in c.name and len(c.name) == 2][0]
+            print "Multiplying: ", assigned_clique.name, clique.name, assigned_clique.values, clique.values
+            product = multiply_factors(Factor.Factor(assigned_clique.name, assigned_clique.values), Factor.Factor(clique.name, clique.values))
+            assigned_clique.name = product.name
+            assigned_clique.values = product.values
+
     return neighbours
 
 def get_elimination_ordering(variables, query_variables, factors):
@@ -248,10 +319,10 @@ def get_elimination_ordering(variables, query_variables, factors):
             # Count the number of pairs of neighbours who are not
             # neighbours
             pair_count = 0
-            for nbr_1 in adj[node]:
-                for nbr_2 in adj[node]:
+            for adj_1 in adj[node]:
+                for adj_2 in adj[node]:
                     #For every pair
-                    if (nbr_1 != nbr_2) and (nbr_1 not in adj[nbr_2]):
+                    if (adj_1 != adj_2) and (adj_1 not in adj[adj_2]):
                         pair_count += 1
             pair_count /= 2
             if elim_node == None:
@@ -265,13 +336,13 @@ def get_elimination_ordering(variables, query_variables, factors):
         #  We are done choosing, remove node and add to elim
         to_elim = to_elim - set([elim_node])
         elim_order = elim_order + [elim_node]
-        for nbr_1 in adj[elim_node]:
-            adj[nbr_1] = set(adj[nbr_1]) - set([elim_node])
-            for nbr_2 in adj[elim_node]:
-                if nbr_2 != nbr_1:
+        for adj_1 in adj[elim_node]:
+            adj[adj_1] = set(adj[adj_1]) - set([elim_node])
+            for adj_2 in adj[elim_node]:
+                if adj_2 != adj_1:
                     # Construct all fill in edges
-                    adj[nbr_1] = adj[nbr_1].union([nbr_2])
-                    adj[nbr_2] = adj[nbr_2].union([nbr_1])
+                    adj[adj_1] = adj[adj_1].union([adj_2])
+                    adj[adj_2] = adj[adj_2].union([adj_1])
         adj.pop(elim_node, None)  # Delete the node
     return elim_order
 
@@ -376,8 +447,8 @@ def get_junction_tree(max_cliques):
     """
     if len(max_cliques) == 1:
         neighbours = dict()
-        neighbours[max_cliques[0]] = None
-        return Junction_Trees.Junction_Trees(max_edge, neighbours)
+        neighbours[max_cliques[0]] = []
+        return Junction_Tree.Junction_Tree(max_cliques, neighbours)
     # TODO
     neighbours = dict()
     new_vertex_1 = -1
